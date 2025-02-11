@@ -1,0 +1,60 @@
+#pragma kernel CSMain
+
+struct TileData
+{
+    int isSolid;
+    int emitsLight;
+    int lightLevel;
+};
+
+RWStructuredBuffer<TileData> Tiles;
+RWStructuredBuffer<TileData> NextTiles;
+RWTexture2D<float4> LightMap;
+int2 worldSize;
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= worldSize.x || id.y >= worldSize.y)
+        return;
+
+    int index = id.y * worldSize.x + id.x;
+    TileData tile = Tiles[index];
+
+    // Step 1: Ensure emitters have correct light values
+    if (tile.emitsLight == 1)
+    {
+        tile.lightLevel = (tile.isSolid == 1) ? 15 : 8; // Glowstone = 15, Air = 8
+    }
+
+    TileData newTile = tile;
+
+    // Step 2: Propagate light outward (RECURSIVE FRAME-BASED PROPAGATION)
+    int spreadLight = tile.lightLevel - 1;
+    if (spreadLight > 0)  // Only spread if there's light
+    {
+        int2 directions[4] = { int2(1, 0), int2(-1, 0), int2(0, 1), int2(0, -1) };
+        for (int i = 0; i < 4; i++)
+        {
+            int2 neighbourCoord = id.xy + directions[i];
+            if (neighbourCoord.x >= 0 && neighbourCoord.x < worldSize.x &&
+                neighbourCoord.y >= 0 && neighbourCoord.y < worldSize.y)
+            {
+                int neighbourIndex = neighbourCoord.y * worldSize.x + neighbourCoord.x;
+                TileData neighbourTile = Tiles[neighbourIndex];
+
+                if (neighbourTile.isSolid == 0 && neighbourTile.lightLevel < spreadLight)
+                {
+                    neighbourTile.lightLevel = spreadLight;
+                    NextTiles[neighbourIndex] = neighbourTile; // Store updated tile
+                }
+            }
+        }
+    }
+
+    NextTiles[index] = newTile; // Store current tile updates
+
+    // Step 3: Apply lighting to texture (DEBUG VISUALIZATION)
+    float lightValue = max(0.0f, min(1.0f, float(tile.lightLevel) / 15.0f));
+    LightMap[id.xy] = float4(lightValue, 0, 0, 1.0f);  // Red channel debug
+}

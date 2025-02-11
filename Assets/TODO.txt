@@ -1,0 +1,27 @@
+Done:
+Mesh generation
+Chunks
+Camera movement
+Tile breaking/placing
+Culling
+UV textures
+Collisions
+
+Now:
+Lighting
+
+Next:
+Player movement
+Better cave generation (cellular automata or smth idk)
+
+Later:
+More tiles
+Liquid physics
+Ores
+Textures
+Rule tiles
+Texture variation
+Inventory
+Parallax sky
+Sounds
+Boss or smth
